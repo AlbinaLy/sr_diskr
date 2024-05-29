@@ -1,0 +1,377 @@
+using System;
+using System.Collections.Generic;
+
+public class Graph
+{
+    private int[,] adjacencyMatrix;
+    private int vertexCount;
+
+    public Graph(int[,] adjacencyMatrix)
+    {
+        this.adjacencyMatrix = adjacencyMatrix;
+        this.vertexCount = adjacencyMatrix.GetLength(0);
+    }
+
+    public void VisualizeGraph()
+    {
+        Console.WriteLine("Граф :");
+        for (int i = 0; i < vertexCount; i++)
+        {
+            for (int j = 0; j < vertexCount; j++)
+            {
+                Console.Write(adjacencyMatrix[i, j] + " ");
+            }
+            Console.WriteLine();
+        }
+    }
+
+    public void CalculateGraphCharacteristics()
+    {
+        PrintAdjacencyMatrix();
+        PrintIncidenceMatrix();
+        int chromaticNumber = CalculateChromaticNumber();
+        int edgeChromaticNumber = CalculateEdgeChromaticNumber();
+
+        Console.WriteLine($"Хроматичне число: {chromaticNumber}");
+        Console.WriteLine($"Реберне хроматичне число: {edgeChromaticNumber}");
+    }
+
+    public void DepthFirstSearch(int startVertex)
+    {
+        bool[] visited = new bool[vertexCount];
+        DFS(startVertex, visited);
+    }
+
+    private void DFS(int vertex, bool[] visited)
+    {
+        visited[vertex] = true;
+        Console.Write(vertex + 1 + " ");
+
+        for (int i = 0; i < vertexCount; i++)
+        {
+            if (adjacencyMatrix[vertex, i] > 0 && !visited[i])
+            {
+                DFS(i, visited);
+            }
+        }
+    }
+
+    public void BreadthFirstSearch(int startVertex)
+    {
+        bool[] visited = new bool[vertexCount];
+        Queue<int> queue = new Queue<int>();
+
+        visited[startVertex] = true;
+        queue.Enqueue(startVertex);
+
+        while (queue.Count > 0)
+        {
+            int vertex = queue.Dequeue();
+            Console.Write(vertex + 1 + " ");
+
+            for (int i = 0; i < vertexCount; i++)
+            {
+                if (adjacencyMatrix[vertex, i] > 0 && !visited[i])
+                {
+                    visited[i] = true;
+                    queue.Enqueue(i);
+                }
+            }
+        }
+    }
+
+    private void PrintAdjacencyMatrix()
+    {
+        Console.WriteLine("Матриця суміжності:");
+        for (int i = 0; i < vertexCount; i++)
+        {
+            for (int j = 0; j < vertexCount; j++)
+            {
+                Console.Write(adjacencyMatrix[i, j] + " ");
+            }
+            Console.WriteLine();
+        }
+    }
+
+    private void PrintIncidenceMatrix()
+    {
+        List<Tuple<int, int>> edges = new List<Tuple<int, int>>();
+        for (int i = 0; i < vertexCount; i++)
+        {
+            for (int j = i + 1; j < vertexCount; j++)
+            {
+                for (int k = 0; k < adjacencyMatrix[i, j]; k++)
+                {
+                    edges.Add(new Tuple<int, int>(i, j));
+                }
+            }
+        }
+
+        int[,] incidenceMatrix = new int[vertexCount, edges.Count];
+        for (int e = 0; e < edges.Count; e++)
+        {
+            incidenceMatrix[edges[e].Item1, e] = 1;
+            incidenceMatrix[edges[e].Item2, e] = 1;
+        }
+
+        Console.WriteLine("Матриця інцидентності:");
+        for (int i = 0; i < vertexCount; i++)
+        {
+            for (int j = 0; j < edges.Count; j++)
+            {
+                Console.Write(incidenceMatrix[i, j] + " ");
+            }
+            Console.WriteLine();
+        }
+
+    }
+
+    private int CalculateChromaticNumber()
+    {
+        int[] result = new int[vertexCount];
+        bool[] available = new bool[vertexCount];
+
+        result[0] = 0;
+
+        for (int u = 1; u < vertexCount; u++)
+        {
+            for (int i = 0; i < vertexCount; i++)
+                available[i] = true;
+
+            for (int i = 0; i < vertexCount; i++)
+            {
+                if (adjacencyMatrix[u, i] > 0 && result[i] != -1)
+                    available[result[i]] = false;
+            }
+
+            int cr;
+            for (cr = 0; cr < vertexCount; cr++)
+            {
+                if (available[cr])
+                    break;
+            }
+
+            result[u] = cr;
+        }
+
+        int maxColor = 0;
+        for (int i = 0; i < vertexCount; i++)
+            if (result[i] > maxColor)
+                maxColor = result[i];
+
+        return maxColor + 1;
+    }
+
+    private int CalculateEdgeChromaticNumber()
+    {
+        int maxDegree = 0;
+        for (int i = 0; i < vertexCount; i++)
+        {
+            int degree = 0;
+            for (int j = 0; j < vertexCount; j++)
+                degree += adjacencyMatrix[i, j];
+            if (degree > maxDegree)
+                maxDegree = degree;
+        }
+        return maxDegree;
+    }
+    
+    public void DijkstraShortestPath(int sourceVertex)
+    {
+        int[] distance = new int[vertexCount];
+        bool[] shortestPathTreeSet = new bool[vertexCount];
+
+        for (int i = 0; i < vertexCount; i++)
+        {
+            distance[i] = int.MaxValue;
+            shortestPathTreeSet[i] = false;
+        }
+
+        distance[sourceVertex] = 0;
+
+        for (int count = 0; count < vertexCount - 1; count++)
+        {
+            int u = MinDistance(distance, shortestPathTreeSet);
+            shortestPathTreeSet[u] = true;
+
+            for (int v = 0; v < vertexCount; v++)
+            {
+                if (!shortestPathTreeSet[v] && adjacencyMatrix[u, v] != 0 && distance[u] != int.MaxValue && distance[u] + adjacencyMatrix[u, v] < distance[v])
+                {
+                    distance[v] = distance[u] + adjacencyMatrix[u, v];
+                }
+            }
+        }
+
+        PrintShortestPaths(distance, sourceVertex);
+    }
+
+    private int MinDistance(int[] distance, bool[] shortestPathTreeSet)
+    {
+        int min = int.MaxValue;
+        int minIndex = 0;
+
+        for (int v = 0; v < vertexCount; v++)
+        {
+            if (!shortestPathTreeSet[v] && distance[v] <= min)
+            {
+                min = distance[v];
+                minIndex = v;
+            }
+        }
+
+        return minIndex;
+    }
+
+    private void PrintShortestPaths(int[] distance, int sourceVertex)
+    {
+        Console.WriteLine("\nНайкоротший шлях алгоримом Дейкстрі " + (sourceVertex + 1) + ":");
+        for (int i = 0; i < vertexCount; i++)
+        {
+            Console.WriteLine("Vertex " + (sourceVertex + 1) + " to Vertex " + (i + 1) + " -> Distance: " + distance[i]);
+        }
+    }
+
+    public void FloydWarshallShortestPath()
+    {
+        int[,] distance = new int[vertexCount, vertexCount];
+
+        for (int i = 0; i < vertexCount; i++)
+        {
+            for (int j = 0; j < vertexCount; j++)
+            {
+                distance[i, j] = adjacencyMatrix[i, j];
+            }
+        }
+
+        for (int k = 0; k < vertexCount; k++)
+        {
+            for (int i = 0; i < vertexCount; i++)
+            {
+                for (int j = 0; j < vertexCount; j++)
+                {
+                    if (distance[i, k] != int.MaxValue && distance[k, j] != int.MaxValue && distance[i, k] + distance[k, j] < distance[i, j])
+                    {
+                        distance[i, j] = distance[i, k] + distance[k, j];
+                    }
+                }
+            }
+        }
+
+        PrintFloydWarshallShortestPaths(distance);
+    }
+
+    private void PrintFloydWarshallShortestPaths(int[,] distance)
+    {
+        Console.WriteLine("\nНайкоротший шлях алгоритмом Флойда:");
+
+        for (int i = 0; i < vertexCount; ++i)
+        {
+            for (int j = 0; j < vertexCount; ++j)
+            {
+                if (distance[i, j] == int.MaxValue)
+                {
+                    Console.Write("INF ");
+                }
+                else
+                {
+                    Console.Write(distance[i, j] + " ");
+                }
+            }
+            Console.WriteLine();
+        }
+    }
+    public Tuple<int, int> ShortestDistanceAmongShortestPaths()
+    {
+        int shortestDistance = int.MaxValue;
+        Tuple<int, int> shortestDistancePair = new Tuple<int, int>(-1, -1);
+
+        for (int i = 0; i < vertexCount; i++)
+        {
+            for (int j = i + 1; j < vertexCount; j++)
+            {
+                if (adjacencyMatrix[i, j] < shortestDistance)
+                {
+                    shortestDistance = adjacencyMatrix[i, j];
+                    shortestDistancePair = new Tuple<int, int>(i, j);
+                }
+            }
+        }
+
+        return shortestDistancePair;
+    }
+    public Tuple<int, int> ShortestDistanceAmongLongestShortestPaths()
+    {
+        int longestShortestDistance = -1;
+        Tuple<int, int> longestShortestDistancePair = new Tuple<int, int>(-1, -1);
+
+        for (int i = 0; i < vertexCount; i++)
+        {
+            for (int j = i + 1; j < vertexCount; j++)
+            {
+                if (adjacencyMatrix[i, j] > longestShortestDistance)
+                {
+                    longestShortestDistance = adjacencyMatrix[i, j];
+                    longestShortestDistancePair = new Tuple<int, int>(i, j);
+                }
+            }
+        }
+
+        return longestShortestDistancePair;
+    }
+
+}
+
+public class Program
+{
+    public static void Main()
+    {
+        int[,] adjacencyMatrix = new int[6, 6];
+        int[,] edges = {
+            {1, 2, 0},
+            {1, 3, 0},
+            {1, 4, 0},
+            {1, 5, 1},
+            {1, 6, 1},
+            {2, 3, 1},
+            {2, 4, 0},
+            {2, 5, 0},
+            {2, 6, 2},
+            {3, 4, 0},
+            {3, 5, 0},
+            {3, 6, 1},
+            {4, 5, 1},
+            {4, 6, 0},
+            {5, 6, 0}
+        };
+
+        for (int i = 0; i < edges.GetLength(0); i++)
+        {
+            int from = edges[i, 0] - 1;
+            int to = edges[i, 1] - 1;
+            int weight = edges[i, 2];
+            adjacencyMatrix[from, to] += weight;
+            adjacencyMatrix[to, from] += weight;
+        }
+
+        Graph graph = new Graph(adjacencyMatrix);
+        graph.VisualizeGraph();
+        graph.CalculateGraphCharacteristics();
+        Console.WriteLine("\nОбхід графа в глибину з вершини 1:");
+        graph.DepthFirstSearch(0);
+
+        Console.WriteLine("\n\nОбхід графа в ширину з вершини 1:");
+        graph.BreadthFirstSearch(0);
+
+
+        graph.DijkstraShortestPath(0);
+        graph.FloydWarshallShortestPath();
+
+        Tuple<int, int> shortestDistancePair = graph.ShortestDistanceAmongShortestPaths();
+        Tuple<int, int> longestShortestDistancePair = graph.ShortestDistanceAmongLongestShortestPaths();
+
+        Console.WriteLine($"Між якою парою вершин найкоротша відстань серед усіх найкоротших відстаней: {shortestDistancePair.Item1 + 1} та {shortestDistancePair.Item2 + 1}");
+        Console.WriteLine($"Між якою парою вершин найкоротша відстань, яка є найдовшою серед усіх найкоротших відстаней: {longestShortestDistancePair.Item1 + 1} та {longestShortestDistancePair.Item2 + 1}");
+
+    }
+}
